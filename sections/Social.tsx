@@ -1,45 +1,58 @@
-import { JSX } from "preact";
-import { Social } from "./types.ts";
-import Icon from "../components/ui/Icon.tsx";
+import { useSection } from "deco/hooks/useSection.ts";
+import type { AppContext } from "../apps/site.ts";
+import { toFileUrl } from "std/path/mod.ts";
 
-export interface Props {
-  social?: Social[];
+const ROOT = toFileUrl(Deno.cwd()).href;
+
+interface Props {
+  initialValue?: number;
 }
 
-export default function Main(
-  {
-    social = [
-      { label: "Discord", href: "/" },
-      { label: "Facebook", href: "/" },
-      { label: "Instagram", href: "/" },
-      { label: "Linkedin", href: "/" },
-      { label: "Tiktok", href: "/" },
-      { label: "Twitter", href: "/" },
-      { label: "WhatsApp", href: "/" },
-    ],
-  }: Props,
-): JSX.Element | null {
+export async function action(
+  props: Props,
+  req: Request,
+  ctx: AppContext
+): Promise<Props> {
+  const form = await req.formData();
+  const count = parseInt(form.get("count") ?? "0", 10);
+  return { ...props, initialValue: count };
+}
+
+export function loader(props: Props) {
+  return props;
+}
+
+export default function CounterSection({
+  initialValue = 0,
+}: Props) {
+
+  const generateSectionUrl = (props: Props, otherProps: { href?: string } = {}) => {
+    const sectionProps = {
+      ...otherProps,
+      props,
+    };
+    return useSection(sectionProps);
+  };
+
   return (
-    <div class="flex flex-col items-center max-w-[688px] mx-auto w-full lg:px-0 px-6">
-      {social && social?.length > 0 && (
-        <ul class="flex flex-row gap-4 items-center justify-center my-8">
-          {social?.map((link) => (
-            <li>
-              <a
-                target="_blank"
-                href={link.href}
-                title={link.label}
-              >
-                <Icon
-                  size={20}
-                  id={link.label}
-                  strokeWidth={2}
-                />
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <section>
+      <div class="container mx-auto py-12">
+        <h2 class="text-3xl font-bold mb-4">Interactive Counter</h2>
+        <form
+          hx-post={generateSectionUrl({ initialValue })}
+          hx-target="closest section"
+          hx-swap="innerHTML"
+        >
+          <p>Current Count: {initialValue}</p>
+          <button
+            type="button"
+            class="btn btn-primary"
+            hx-get={`${generateSectionUrl({ initialValue: initialValue + 1 })}`}
+          >
+            Increment
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
